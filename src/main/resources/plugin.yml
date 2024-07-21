@@ -1,0 +1,4 @@
+name: FloorIsLava
+version: '${project.version}'
+main: org.epiccarlito.floorislava.FloorIsLava
+api-version: '1.21'
