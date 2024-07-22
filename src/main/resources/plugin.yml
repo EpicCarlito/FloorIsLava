@@ -2,3 +2,10 @@ name: FloorIsLava
 version: '${project.version}'
 main: org.epiccarlito.floorislava.FloorIsLava
 api-version: '1.21'
+commands:
+  floorislava:
+    description: "Play FloorIsLava"
+    usage: "/floorislava [help, start]"
+    aliases: [fl]
+    permission: epiccarlito.floorislava
+    permission-message: "You do not have permission to use this command"
