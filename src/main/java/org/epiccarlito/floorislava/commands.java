@@ -5,18 +5,17 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class commands implements CommandExecutor, TabCompleter {
-    public JavaPlugin plugin;
+    public FloorIsLava plugin;
     public gameLogic game;
 
-    public commands(JavaPlugin plugin, gameLogic game) {
+    public commands(FloorIsLava plugin) {
         this.plugin = plugin;
-        this.game = game;
+        game = plugin.gameLogic;
     }
 
     @Override

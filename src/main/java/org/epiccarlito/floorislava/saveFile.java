@@ -1,29 +1,50 @@
 package org.epiccarlito.floorislava;
 
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
 
 public class saveFile {
-    private FloorIsLava plugin;
+    private final FloorIsLava plugin;
+    private File filePath;
+    private FileConfiguration savedConfig;
 
     public saveFile(FloorIsLava plugin) {
         this.plugin = plugin;
+        filePath = new File(plugin.getDataFolder(), "save.yml");
     }
 
-    public YamlConfiguration findFile() {
-        File saveFile = new File(plugin.getDataFolder(), "save.yml");
-        if (saveFile.exists()) {
+    public FileConfiguration findFile() {
+        if (filePath.exists()) {
             plugin.getLogger().info("Found existing game data");
-            return YamlConfiguration.loadConfiguration(saveFile);
+            savedConfig = YamlConfiguration.loadConfiguration(filePath);
+            return savedConfig;
         }
         return null;
     }
 
+    public YamlConfiguration createConfig() {
+        try {
+            if (!filePath.exists()) {
+                filePath.createNewFile();
+            }
+            return YamlConfiguration.loadConfiguration(filePath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void shutdown() {
-        File saveFile = new File(plugin.getDataFolder(), "save.yml");
-        if (!saveFile.exists()) {
-            plugin.getLogger().info("Found existing game data");
+        if (filePath == null || savedConfig == null) return;
+
+        try {
+            File saveFile = new File(plugin.getDataFolder(), "save.yml");
+            savedConfig.save(saveFile);
+            plugin.getLogger().info("Saved game data");
+        } catch (IOException e) {
+            plugin.getLogger().info("Unable to save the game data");
         }
     }
 }

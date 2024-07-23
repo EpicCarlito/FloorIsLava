@@ -4,15 +4,15 @@ import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class gameLogic {
-    public JavaPlugin plugin;
+    public FloorIsLava plugin;
     public FileConfiguration savedConfig;
     public FileConfiguration config;
-    final private World world = Bukkit.getWorld("world");
+    private World world;
 
     public boolean activeGame = false;
     public ArrayList<Player> playersAlive;
@@ -24,7 +24,7 @@ public class gameLogic {
     public Integer xPosition;
     public Integer zPosition;
 
-    public gameLogic(JavaPlugin plugin, FileConfiguration savedConfig) {
+    public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
         config = plugin.getConfig();
 
@@ -37,7 +37,7 @@ public class gameLogic {
             xPosition = config.getInt("borderPosition.x");
             zPosition = config.getInt("borderPosition.z");
         } else {
-            this.savedConfig = savedConfig;
+            plugin.savedConfig = savedConfig;
 
             activeGame = savedConfig.getBoolean("activeGame");
             risingBlock = savedConfig.getString("risingBlock");
@@ -55,12 +55,19 @@ public class gameLogic {
             return;
         }
 
+        world = Bukkit.getServer().getWorlds().get(0);
         Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
         WorldBorder border = world.getWorldBorder();
         border.setCenter(startPosition);
         border.setSize(borderSize * 2);
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
+
+        savedConfig = plugin.saveFile.createConfig();
+        if (savedConfig != null) {
+            savedConfig.set("gameStatus", true);
+            savedConfig.set("playersAlive", playersAlive);
+        }
 
         for (Player alivePlayer : playersAlive) {
             if (forceTeleport) {
