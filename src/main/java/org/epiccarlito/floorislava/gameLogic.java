@@ -5,14 +5,13 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class gameLogic {
     public FloorIsLava plugin;
     public FileConfiguration savedConfig;
     public FileConfiguration config;
-    private World world;
+    public saveFile saveFile;
 
     public boolean activeGame = false;
     public ArrayList<Player> playersAlive;
@@ -26,6 +25,8 @@ public class gameLogic {
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
+        saveFile = plugin.saveFile;
+        savedConfig = plugin.savedConfig;
         config = plugin.getConfig();
 
         if (savedConfig == null) {
@@ -37,10 +38,7 @@ public class gameLogic {
             xPosition = config.getInt("borderPosition.x");
             zPosition = config.getInt("borderPosition.z");
         } else {
-            plugin.savedConfig = savedConfig;
-
             activeGame = savedConfig.getBoolean("activeGame");
-            risingBlock = savedConfig.getString("risingBlock");
         }
     }
 
@@ -55,19 +53,17 @@ public class gameLogic {
             return;
         }
 
-        world = Bukkit.getServer().getWorlds().get(0);
+        World world = Bukkit.getServer().getWorlds().get(0);
         Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
         WorldBorder border = world.getWorldBorder();
         border.setCenter(startPosition);
-        border.setSize(borderSize * 2);
+        border.setSize(borderSize);
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
 
-        savedConfig = plugin.saveFile.createConfig();
-        if (savedConfig != null) {
-            savedConfig.set("gameStatus", true);
-            savedConfig.set("playersAlive", playersAlive);
-        }
+        savedConfig = saveFile.createConfig();
+        savedConfig.set("activeGame", true);
+        savedConfig.set("playersAlive", playersAlive);
 
         for (Player alivePlayer : playersAlive) {
             if (forceTeleport) {
@@ -81,5 +77,7 @@ public class gameLogic {
             alivePlayer.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
             alivePlayer.setFoodLevel(20);
         }
+
+        activeGame = true;
     }
 }

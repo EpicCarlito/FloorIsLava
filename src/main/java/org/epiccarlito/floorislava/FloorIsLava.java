@@ -7,7 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FloorIsLava extends JavaPlugin {
     public final saveFile saveFile = new saveFile(this);
-    public final gameLogic gameLogic = new gameLogic(this);
+    public gameLogic gameLogic;
     public FileConfiguration savedConfig;
     public World world;
 
@@ -16,13 +16,14 @@ public final class FloorIsLava extends JavaPlugin {
         saveDefaultConfig();
         world = Bukkit.getWorld("world");
         savedConfig = saveFile.findFile();
+        gameLogic = new gameLogic(this);
         getCommand("floorislava").setExecutor(new commands(this));
         getLogger().info("Plugin Enabled");
     }
 
     @Override
     public void onDisable() {
-        saveFile.shutdown();
+        saveFile.saveConfig(gameLogic.savedConfig);
         getLogger().info("Plugin Disabled");
     }
 }

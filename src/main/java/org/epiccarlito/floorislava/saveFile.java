@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class saveFile {
     private final FloorIsLava plugin;
-    private File filePath;
+    private final File filePath;
     private FileConfiguration savedConfig;
 
     public saveFile(FloorIsLava plugin) {
@@ -36,8 +36,9 @@ public class saveFile {
         }
     }
 
-    public void shutdown() {
-        if (filePath == null || savedConfig == null) return;
+    public void saveConfig(FileConfiguration newConfig) {
+        if (filePath == null || newConfig == null) return;
+        savedConfig = newConfig;
 
         try {
             File saveFile = new File(plugin.getDataFolder(), "save.yml");
