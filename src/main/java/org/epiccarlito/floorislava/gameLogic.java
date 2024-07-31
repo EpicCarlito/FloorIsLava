@@ -2,8 +2,12 @@ package org.epiccarlito.floorislava;
 
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 
@@ -19,9 +23,12 @@ public class gameLogic {
     public boolean forceTeleport;
     public boolean forceClear;
 
+    public Integer gracePeriod;
     public Integer borderSize;
     public Integer xPosition;
     public Integer zPosition;
+
+    BossBar bossBar;
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
@@ -34,6 +41,7 @@ public class gameLogic {
             forceTeleport = config.getBoolean("forceTeleport");
             forceClear = config.getBoolean("forceClear");
 
+            gracePeriod = config.getInt("gracePeriod");
             borderSize = config.getInt("borderSize");
             xPosition = config.getInt("borderPosition.x");
             zPosition = config.getInt("borderPosition.z");
@@ -78,6 +86,53 @@ public class gameLogic {
             alivePlayer.setFoodLevel(20);
         }
 
-        activeGame = true;
+        startCountdown();
+    }
+
+    public void startCountdown() {
+            Runnable gracePeriodCheck = () -> {
+                if (gracePeriod > 0) {
+                    gracePeriod(1.0);
+                }
+
+                activeGame = true;
+            };
+
+            new BukkitRunnable() {
+                private int countdown = 3;
+                private String text = ChatColor.RED + "➂";
+
+                @Override
+                public void run() {
+                    if (countdown > 0) {
+                        if (countdown == 2) {
+                            text = ChatColor.YELLOW + "➁";
+                        } else if (countdown == 1) {
+                            text = ChatColor.GREEN + "➀";
+                        }
+                        for (Player player : playersAlive) {
+                            player.sendTitle(text, "", 1, 20, 1);
+                        }
+                        countdown -= 1;
+                    } else {
+                        gracePeriodCheck.run();
+                        this.cancel();
+                    }
+
+                }
+            }.runTaskTimer(plugin, 0L, 20L);
+    }
+
+    public void gracePeriod(double progress) {
+        bossBar = Bukkit.createBossBar(
+                ChatColor.GREEN + "Grace Period",
+                BarColor.PURPLE,
+                BarStyle.SOLID);
+
+        for (Player player : playersAlive) {
+            player.sendMessage("Grace Period has started");
+            bossBar.addPlayer(player);
+            bossBar.setVisible(true);
+        }
     }
 }
