@@ -16,6 +16,7 @@ public class gameLogic {
     public FileConfiguration savedConfig;
     public FileConfiguration config;
     public saveFile saveFile;
+    public World world;
 
     public boolean activeGame = false;
     public ArrayList<Player> playersAlive;
@@ -23,6 +24,7 @@ public class gameLogic {
     public boolean forceTeleport;
     public boolean forceClear;
 
+    public Integer heightDelay;
     public Integer gracePeriod;
     public Integer borderSize;
     public Integer xPosition;
@@ -41,6 +43,7 @@ public class gameLogic {
             forceTeleport = config.getBoolean("forceTeleport");
             forceClear = config.getBoolean("forceClear");
 
+            heightDelay = config.getInt("heightDelay");
             gracePeriod = config.getInt("gracePeriod");
             borderSize = config.getInt("borderSize");
             xPosition = config.getInt("borderPosition.x");
@@ -52,87 +55,144 @@ public class gameLogic {
 
     public void startGame(Player player) {
         if (activeGame) {
-            player.sendMessage("A game is currently in session");
+            player.sendMessage(plugin.PLUGIN_NAME + "A game is currently in session");
             return;
         }
 
         if (!(risingBlock.contains("LAVA") || risingBlock.contains("WATER") || risingBlock.contains("VOID"))) {
-            player.sendMessage("Invalid block in configuration. Select the following: ");
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid block in configuration. Select the following: ");
             return;
         }
 
-        World world = Bukkit.getServer().getWorlds().get(0);
-        Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
-        WorldBorder border = world.getWorldBorder();
-        border.setCenter(startPosition);
-        border.setSize(borderSize);
-
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
+        world = Bukkit.getServer().getWorlds().get(0);
 
-        savedConfig = saveFile.createConfig();
-        savedConfig.set("activeGame", true);
-        savedConfig.set("playersAlive", playersAlive);
+        Runnable initializeGame = () -> {
 
-        for (Player alivePlayer : playersAlive) {
-            if (forceTeleport) {
-                alivePlayer.teleport(startPosition);
-            }
-            if (forceClear) {
-                alivePlayer.getInventory().clear();
-            }
+            Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
+            WorldBorder border = world.getWorldBorder();
+            border.setCenter(startPosition);
+            border.setSize(borderSize);
 
-            alivePlayer.setGameMode(GameMode.SURVIVAL);
-            alivePlayer.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
-            alivePlayer.setFoodLevel(20);
-        }
+            savedConfig = saveFile.createConfig();
+            savedConfig.set("activeGame", true);
+            savedConfig.set("playersAlive", playersAlive);
 
-        startCountdown();
-    }
-
-    public void startCountdown() {
-            Runnable gracePeriodCheck = () -> {
-                if (gracePeriod > 0) {
-                    gracePeriod(1.0);
+            for (Player alivePlayer : playersAlive) {
+                if (forceTeleport) {
+                    alivePlayer.teleport(startPosition);
                 }
 
+                if (forceClear) {
+                    alivePlayer.getInventory().clear();
+                }
+
+                alivePlayer.setGameMode(GameMode.SURVIVAL);
+                alivePlayer.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
+                alivePlayer.setFoodLevel(20);
+            }
+
+            if (gracePeriod > 0) {
+                gracePeriod(1.0);
                 activeGame = true;
-            };
+            }
+        };
 
-            new BukkitRunnable() {
-                private int countdown = 3;
-                private String text = ChatColor.RED + "➂";
+        new BukkitRunnable() {
+            private int countdown = 3;
+            private String text = ChatColor.RED + "➂";
 
-                @Override
-                public void run() {
-                    if (countdown > 0) {
-                        if (countdown == 2) {
-                            text = ChatColor.YELLOW + "➁";
-                        } else if (countdown == 1) {
-                            text = ChatColor.GREEN + "➀";
-                        }
-                        for (Player player : playersAlive) {
-                            player.sendTitle(text, "", 1, 20, 1);
-                        }
-                        countdown -= 1;
-                    } else {
-                        gracePeriodCheck.run();
-                        this.cancel();
+            @Override
+            public void run() {
+                if (countdown > 0) {
+                    if (countdown == 2) {
+                        text = ChatColor.YELLOW + "➁";
+                    } else if (countdown == 1) {
+                        text = ChatColor.GREEN + "➀";
                     }
-
+                    for (Player player : playersAlive) {
+                        player.sendTitle(text, "", 1, 20, 1);
+                    }
+                    countdown -= 1;
+                } else {
+                    initializeGame.run();
+                    this.cancel();
                 }
-            }.runTaskTimer(plugin, 0L, 20L);
-    }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    };
 
     public void gracePeriod(double progress) {
         bossBar = Bukkit.createBossBar(
-                ChatColor.GREEN + "Grace Period",
-                BarColor.PURPLE,
+                ChatColor.WHITE + "Grace Period",
+                BarColor.GREEN,
                 BarStyle.SOLID);
 
         for (Player player : playersAlive) {
-            player.sendMessage("Grace Period has started");
+            player.sendMessage(plugin.PLUGIN_NAME + "Grace Period has started");
             bossBar.addPlayer(player);
             bossBar.setVisible(true);
+            bossBar.setProgress(1.0);
         }
+
+        new BukkitRunnable() {
+            private double currentProgress = progress;
+
+            @Override
+            public void run() {
+                if (currentProgress < 0) {
+                    bossBar.setVisible(false);
+                    gameLoop();
+                    this.cancel();
+                }
+                double progressTaken = progress / (gracePeriod * progress);
+
+                currentProgress -= progressTaken;
+                try {
+                    bossBar.setProgress(currentProgress);
+                } catch(Exception e)  {
+                    bossBar.setProgress(0.0);
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    }
+
+    public void gameLoop() {
+        bossBar = Bukkit.createBossBar(
+                ChatColor.WHITE + "Rising Lava",
+                BarColor.RED,
+                BarStyle.SOLID);
+
+        for (Player player : playersAlive) {
+            player.sendMessage(plugin.PLUGIN_NAME + "The lava has started to rise");
+            bossBar.addPlayer(player);
+            bossBar.setVisible(true);
+            bossBar.setProgress(1.0);
+        }
+
+        new BukkitRunnable() {
+            private double currentProgress = 1.0;
+            private Integer yLevel = 0;
+
+            @Override
+            public void run() {
+                if (!(yLevel > 3)) {
+                    if (currentProgress < 0) {
+                        bossBar.setProgress(1.0);
+                        currentProgress = 1.0;
+                        yLevel++;
+                    }
+                    double progressTaken = (double) 1 / heightDelay;
+
+                    currentProgress -= progressTaken;
+
+                    try {
+                        bossBar.setProgress(currentProgress);
+                    } catch(Exception e)  {
+                        bossBar.setProgress(0.0);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
     }
 }
