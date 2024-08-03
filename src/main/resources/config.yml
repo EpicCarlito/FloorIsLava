@@ -3,7 +3,7 @@ forceTeleport: false
 forceClear: false
 startingHeight: 0
 heightIncrease: 3
-heightDelay: 20
+heightDelay: 3
 gracePeriod: 20
 borderSize: 100
 borderPosition:

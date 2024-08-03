@@ -68,7 +68,6 @@ public class gameLogic {
         world = Bukkit.getServer().getWorlds().get(0);
 
         Runnable initializeGame = () -> {
-
             Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
@@ -94,8 +93,11 @@ public class gameLogic {
 
             if (gracePeriod > 0) {
                 gracePeriod(1.0);
-                activeGame = true;
+            } else {
+                gameLoop();
             }
+
+           activeGame = true;
         };
 
         new BukkitRunnable() {
@@ -145,14 +147,14 @@ public class gameLogic {
                     gameLoop();
                     this.cancel();
                 }
-                double progressTaken = progress / (gracePeriod * progress);
 
-                currentProgress -= progressTaken;
                 try {
                     bossBar.setProgress(currentProgress);
-                } catch(Exception e)  {
+                } catch(Exception e) {
                     bossBar.setProgress(0.0);
                 }
+
+                currentProgress = currentProgress - ((double) 1 / gracePeriod);
             }
         }.runTaskTimer(plugin, 0L, 20L);
     }
@@ -176,21 +178,22 @@ public class gameLogic {
 
             @Override
             public void run() {
-                if (!(yLevel > 3)) {
+                if (!(yLevel >= 3)) {
                     if (currentProgress < 0) {
                         bossBar.setProgress(1.0);
                         currentProgress = 1.0;
                         yLevel++;
                     }
-                    double progressTaken = (double) 1 / heightDelay;
-
-                    currentProgress -= progressTaken;
 
                     try {
                         bossBar.setProgress(currentProgress);
-                    } catch(Exception e)  {
+                    } catch(Exception e) {
                         bossBar.setProgress(0.0);
                     }
+
+                    currentProgress = currentProgress - ((double) 1 / heightDelay);
+                } else {
+                    bossBar.setTitle("Height Limit Reached");
                 }
             }
         }.runTaskTimer(plugin, 0L, 20L);
