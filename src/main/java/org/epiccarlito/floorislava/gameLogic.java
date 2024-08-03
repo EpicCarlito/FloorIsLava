@@ -1,7 +1,10 @@
 package org.epiccarlito.floorislava;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.block.Block;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -19,7 +22,9 @@ public class gameLogic {
     public World world;
 
     public boolean activeGame = false;
+    public Integer playersNeeded = 2;
     public ArrayList<Player> playersAlive;
+    public Location startPosition;
     public String risingBlock;
     public boolean forceTeleport;
     public boolean forceClear;
@@ -31,6 +36,7 @@ public class gameLogic {
     public Integer zPosition;
 
     BossBar bossBar;
+    private Integer yLevel = 0;
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
@@ -65,13 +71,17 @@ public class gameLogic {
         }
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
+        if (playersAlive.size() == 1) {
+            playersNeeded = 1;
+        }
         world = Bukkit.getServer().getWorlds().get(0);
 
         Runnable initializeGame = () -> {
-            Location startPosition = new Location(world, xPosition, world.getHighestBlockYAt(xPosition, zPosition), zPosition);
+            startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
             border.setSize(borderSize);
+            yLevel = 0;
 
             savedConfig = saveFile.createConfig();
             savedConfig.set("activeGame", true);
@@ -173,13 +183,37 @@ public class gameLogic {
         }
 
         new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (playersAlive.size() <= (playersNeeded - 1)) {
+                    plugin.getLogger().info("they die");
+                } else {
+                    for (Player player : playersAlive) {
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+
+        new BukkitRunnable() {
             private double currentProgress = 1.0;
-            private Integer yLevel = 0;
+            final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel, startPosition.getZ() - ((double) borderSize / 2));
+            final Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
 
             @Override
             public void run() {
                 if (!(yLevel >= 3)) {
                     if (currentProgress < 0) {
+                        for (int x = topLeft.getBlockX(); x <= bottomRight.getBlockX(); x++) {
+                            for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
+                                Block block = world.getBlockAt(x, yLevel, z);
+
+                                if (block.getType().isAir()) {
+                                    block.setType(Material.DIRT);
+                                }
+                            }
+                        }
+
                         bossBar.setProgress(1.0);
                         currentProgress = 1.0;
                         yLevel++;
