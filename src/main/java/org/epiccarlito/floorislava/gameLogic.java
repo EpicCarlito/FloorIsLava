@@ -104,7 +104,7 @@ public class gameLogic {
             if (gracePeriod > 0) {
                 gracePeriod(1.0);
             } else {
-                gameLoop();
+                gameLoop(1.0);
             }
 
            activeGame = true;
@@ -149,27 +149,33 @@ public class gameLogic {
 
         new BukkitRunnable() {
             private double currentProgress = progress;
+            private int secondsPassed = 0;
 
             @Override
             public void run() {
                 if (currentProgress < 0) {
                     bossBar.setVisible(false);
-                    gameLoop();
+                    gameLoop(1.0);
                     this.cancel();
                 }
 
                 try {
+                    if (secondsPassed > 0 && secondsPassed % (gracePeriod) == 0) {
+                        currentProgress = 0.0;
+                    }
+
                     bossBar.setProgress(currentProgress);
                 } catch(Exception e) {
                     bossBar.setProgress(0.0);
                 }
 
-                currentProgress = currentProgress - ((double) 1 / gracePeriod);
+                currentProgress = currentProgress - (progress / gracePeriod);
+                secondsPassed++;
             }
         }.runTaskTimer(plugin, 0L, 20L);
     }
 
-    public void gameLoop() {
+    public void gameLoop(double progress) {
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Rising Lava",
                 BarColor.RED,
@@ -183,20 +189,8 @@ public class gameLogic {
         }
 
         new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (playersAlive.size() <= (playersNeeded - 1)) {
-                    plugin.getLogger().info("they die");
-                } else {
-                    for (Player player : playersAlive) {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
-                    }
-                }
-            }
-        }.runTaskTimer(plugin, 0L, 20L);
-
-        new BukkitRunnable() {
-            private double currentProgress = 1.0;
+            private double currentProgress = progress;
+            private int secondsPassed = 0;
             final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel, startPosition.getZ() - ((double) borderSize / 2));
             final Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
 
@@ -207,7 +201,6 @@ public class gameLogic {
                         for (int x = topLeft.getBlockX(); x <= bottomRight.getBlockX(); x++) {
                             for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
                                 Block block = world.getBlockAt(x, yLevel, z);
-
                                 if (block.getType().isAir()) {
                                     block.setType(Material.DIRT);
                                 }
@@ -220,12 +213,23 @@ public class gameLogic {
                     }
 
                     try {
+                        if (currentProgress != 1.0) {
+                            secondsPassed++;
+                            if (secondsPassed > 0 && secondsPassed % (heightDelay) == 0) {
+                                currentProgress = 0.0;
+                            }
+                        }
+
                         bossBar.setProgress(currentProgress);
                     } catch(Exception e) {
                         bossBar.setProgress(0.0);
                     }
 
-                    currentProgress = currentProgress - ((double) 1 / heightDelay);
+                    currentProgress = currentProgress - (progress / heightDelay);
+
+                    for (Player player : playersAlive) {
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
+                    }
                 } else {
                     bossBar.setTitle("Height Limit Reached");
                 }
