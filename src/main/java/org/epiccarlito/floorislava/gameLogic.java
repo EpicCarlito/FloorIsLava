@@ -1,6 +1,7 @@
 package org.epiccarlito.floorislava;
 
 import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -22,21 +23,23 @@ public class gameLogic {
     public World world;
 
     public boolean activeGame = false;
-    public Integer playersNeeded = 2;
+    public int playersNeeded = 2;
     public ArrayList<Player> playersAlive;
     public Location startPosition;
     public String risingBlock;
     public boolean forceTeleport;
     public boolean forceClear;
+    public boolean clearActionBar;
 
-    public Integer heightDelay;
-    public Integer gracePeriod;
-    public Integer borderSize;
-    public Integer xPosition;
-    public Integer zPosition;
+    public int startingHeight;
+    public int heightIncrease;
+    public int heightDelay;
+    public int gracePeriod;
+    public int borderSize;
+    public int xPosition;
+    public int zPosition;
 
     BossBar bossBar;
-    private Integer yLevel = 0;
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
@@ -48,7 +51,10 @@ public class gameLogic {
             risingBlock = config.getString("risingBlock");
             forceTeleport = config.getBoolean("forceTeleport");
             forceClear = config.getBoolean("forceClear");
+            clearActionBar = config.getBoolean("clearActionBar");
 
+            startingHeight = config.getInt("startingHeight");
+            heightIncrease = config.getInt("heightIncrease");
             heightDelay = config.getInt("heightDelay");
             gracePeriod = config.getInt("gracePeriod");
             borderSize = config.getInt("borderSize");
@@ -81,7 +87,6 @@ public class gameLogic {
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
             border.setSize(borderSize);
-            yLevel = 0;
 
             savedConfig = saveFile.createConfig();
             savedConfig.set("activeGame", true);
@@ -153,6 +158,11 @@ public class gameLogic {
 
             @Override
             public void run() {
+                if (!activeGame) {
+                    bossBar.setVisible(false);
+                    this.cancel();
+                }
+
                 if (currentProgress < 0) {
                     bossBar.setVisible(false);
                     gameLoop(1.0);
@@ -175,6 +185,27 @@ public class gameLogic {
         }.runTaskTimer(plugin, 0L, 20L);
     }
 
+    public void endGame(Player player) {
+        if (activeGame) {
+            for (Player alivePlayer : playersAlive) {
+                alivePlayer.setGameMode(GameMode.SURVIVAL);
+                player.sendMessage(plugin.PLUGIN_NAME + "Game has ended!");
+            }
+
+            TextComponent component = new TextComponent();
+            component.setText(plugin.PLUGIN_NAME + ChatColor.AQUA + "Click to play again!");
+            component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/floorislava start"));
+            player.spigot().sendMessage(component);
+
+            world.getWorldBorder().setCenter(new Location(world,0,0,0));
+            world.getWorldBorder().setSize(30000000);
+
+            activeGame = false;
+        } else {
+            player.sendMessage(plugin.PLUGIN_NAME + "A game is not in session");
+        }
+    }
+
     public void gameLoop(double progress) {
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Rising Lava",
@@ -190,26 +221,38 @@ public class gameLogic {
 
         new BukkitRunnable() {
             private double currentProgress = progress;
+            private int yLevel = startingHeight;
             private int secondsPassed = 0;
-            final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel, startPosition.getZ() - ((double) borderSize / 2));
+            final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel + heightIncrease, startPosition.getZ() - ((double) borderSize / 2));
             final Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
 
             @Override
             public void run() {
-                if (!(yLevel >= 3)) {
+                if (!activeGame) {
+                    bossBar.setVisible(false);
+                    this.cancel();
+                }
+
+                if (!(yLevel >= world.getMaxHeight())) {
                     if (currentProgress < 0) {
+
                         for (int x = topLeft.getBlockX(); x <= bottomRight.getBlockX(); x++) {
-                            for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
-                                Block block = world.getBlockAt(x, yLevel, z);
-                                if (block.getType().isAir()) {
-                                    block.setType(Material.DIRT);
+                            for (int y = bottomRight.getBlockY(); y <= topLeft.getBlockY(); y++) {
+                                for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
+                                    Block block = world.getBlockAt(x, y, z);
+                                    if (block.getType() == Material.DIRT) {
+                                        block.setType(Material.WATER);
+                                    }
                                 }
                             }
                         }
 
                         bossBar.setProgress(1.0);
                         currentProgress = 1.0;
-                        yLevel++;
+                        yLevel += heightIncrease;
+
+                        topLeft.setY(yLevel + heightIncrease);
+                        bottomRight.setY(yLevel);
                     }
 
                     try {
@@ -227,8 +270,10 @@ public class gameLogic {
 
                     currentProgress = currentProgress - (progress / heightDelay);
 
-                    for (Player player : playersAlive) {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
+                    if (!clearActionBar) {
+                        for (Player player : playersAlive) {
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
+                        }
                     }
                 } else {
                     bossBar.setTitle("Height Limit Reached");

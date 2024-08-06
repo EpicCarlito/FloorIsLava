@@ -1,7 +1,8 @@
 risingBlock: "LAVA"
 forceTeleport: false
 forceClear: false
-startingHeight: 0
+clearActionBar: false
+startingHeight: -64
 heightIncrease: 3
 heightDelay: 3
 gracePeriod: 20

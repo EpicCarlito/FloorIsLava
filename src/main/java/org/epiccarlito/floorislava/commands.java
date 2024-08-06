@@ -12,10 +12,13 @@ import java.util.List;
 public class commands implements CommandExecutor, TabCompleter {
     public FloorIsLava plugin;
     public gameLogic game;
+    private final String INSUFFICIENT_ARGS;
 
     public commands(FloorIsLava plugin) {
         this.plugin = plugin;
         game = plugin.gameLogic;
+
+        INSUFFICIENT_ARGS = plugin.PLUGIN_NAME + "Insufficient or unknown arguments.";
     }
 
     @Override
@@ -38,6 +41,14 @@ public class commands implements CommandExecutor, TabCompleter {
                         game.startGame(player);
                         break;
                     }
+                    case "end": {
+                        game.endGame(player);
+                        break;
+                    }
+                    default: {
+                        player.sendMessage(INSUFFICIENT_ARGS);
+                        break;
+                    }
                 }
             }
         }
@@ -48,7 +59,7 @@ public class commands implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] args) {
         switch (args.length) {
             case 1: {
-                return Arrays.asList("help", "start");
+                return Arrays.asList("help", "start", "end");
             }
         }
         return null;
