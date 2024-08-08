@@ -41,6 +41,10 @@ public class commands implements CommandExecutor, TabCompleter {
                         game.startGame(player);
                         break;
                     }
+                    case "load": {
+                        game.loadGame(player);
+                        break;
+                    }
                     case "end": {
                         game.endGame(player);
                         break;
@@ -59,7 +63,7 @@ public class commands implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] args) {
         switch (args.length) {
             case 1: {
-                return Arrays.asList("help", "start", "end");
+                return Arrays.asList("help", "start", "load", "end");
             }
         }
         return null;

@@ -7,6 +7,6 @@ heightIncrease: 3
 heightDelay: 3
 gracePeriod: 20
 borderSize: 100
-borderPosition:
+startPosition:
   x: 0
   z: 0
