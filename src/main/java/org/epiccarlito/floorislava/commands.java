@@ -46,6 +46,7 @@ public class commands implements CommandExecutor, TabCompleter {
                         break;
                     }
                     case "end": {
+                        plugin.getLogger().info("Executing end command for player: " + player.getName());
                         game.endGame(player);
                         break;
                     }

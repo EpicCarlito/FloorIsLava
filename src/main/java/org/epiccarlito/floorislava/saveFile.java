@@ -7,7 +7,6 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 public class saveFile {
     private final FloorIsLava plugin;
@@ -56,10 +55,14 @@ public class saveFile {
             game = plugin.gameLogic;
         }
 
-        List<String> playerUUIDs = new ArrayList<>();
-        for (Player player : game.playersAlive) {
-            playerUUIDs.add(player.getUniqueId().toString());
-            plugin.getLogger().info(player.getUniqueId().toString());
+        ArrayList<String> playerUUIDs;
+        if (game.playerUUIDs != null) {
+            playerUUIDs = new ArrayList<>(game.playerUUIDs);
+        } else {
+            playerUUIDs = new ArrayList<>();
+            for (Player player : game.playersAlive) {
+                playerUUIDs.add(player.getUniqueId().toString());
+            }
         }
 
         try {
@@ -75,6 +78,7 @@ public class saveFile {
             savedConfig.set("graceProgress", game.graceProgress);
             savedConfig.set("borderSize", game.borderSize);
             savedConfig.set("startingHeight", game.startingHeight);
+            savedConfig.set("world", game.world.getName());
             savedConfig.set("playersAlive", playerUUIDs);
             savedConfig.set("startPosition.x", game.startPosition.getX());
             savedConfig.set("startPosition.z", game.startPosition.getZ());

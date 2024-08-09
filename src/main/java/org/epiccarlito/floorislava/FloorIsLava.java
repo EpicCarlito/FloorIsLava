@@ -20,6 +20,7 @@ public final class FloorIsLava extends JavaPlugin {
         savedConfig = saveFile.findFile();
         gameLogic = new gameLogic(this);
         getCommand("floorislava").setExecutor(new commands(this));
+        getServer().getPluginManager().registerEvents(new gameEvents(this), this);
         getLogger().info("Plugin Enabled");
     }
 

@@ -20,9 +20,11 @@ import java.util.UUID;
 public class gameLogic {
     private final FloorIsLava plugin;
     private final saveFile saveFile;
+    private final FileConfiguration config;
     public FileConfiguration savedConfig;
-    private World world;
+    public World world;
 
+    public boolean activeGame = false;
     public String risingBlock;
     public boolean clearActionBar;
     public int startingHeight;
@@ -33,8 +35,8 @@ public class gameLogic {
     public int borderSize;
     public Location startPosition;
     public ArrayList<Player> playersAlive = new ArrayList<>();
+    public List<String> playerUUIDs;
 
-    private boolean activeGame = false;
     private int playersNeeded = 2;
     private boolean forceTeleport;
     private boolean forceClear;
@@ -42,13 +44,13 @@ public class gameLogic {
     private final int xPosition;
     private final int zPosition;
 
-    private BossBar bossBar;
+    public BossBar bossBar;
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
         saveFile = plugin.saveFile;
         savedConfig = plugin.savedConfig;
-        FileConfiguration config = plugin.getConfig();
+        config = plugin.getConfig();
 
         if (savedConfig == null) {
             risingBlock = config.getString("risingBlock");
@@ -56,7 +58,6 @@ public class gameLogic {
             forceClear = config.getBoolean("forceClear");
             clearActionBar = config.getBoolean("clearActionBar");
 
-            startingHeight = config.getInt("startingHeight");
             heightIncrease = config.getInt("heightIncrease");
             heightDelay = config.getInt("heightDelay");
             gracePeriod = config.getInt("gracePeriod");
@@ -64,7 +65,6 @@ public class gameLogic {
             xPosition = config.getInt("startPosition.x");
             zPosition = config.getInt("startPosition.z");
         } else {
-            activeGame = savedConfig.getBoolean("activeGame");
             risingBlock = savedConfig.getString("risingBlock");
             clearActionBar = savedConfig.getBoolean("clearActionBar");
             startingHeight = savedConfig.getInt("startingHeight");
@@ -76,20 +76,10 @@ public class gameLogic {
             borderSize = savedConfig.getInt("borderSize");
             xPosition = config.getInt("startPosition.x");
             zPosition = config.getInt("startPosition.z");
-            List<String> playerUUIDs = savedConfig.getStringList("playersAlive");
 
-            for (String uuidString : playerUUIDs) {
-                try {
-                    UUID uuid = UUID.fromString(uuidString);
-                    Player player = Bukkit.getPlayer(uuid);
-
-                    if (player != null) {
-                        playersAlive.add(player);
-                        plugin.getLogger().info("Loaded player: " + player.getUniqueId().toString());
-                    }
-                } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("Invalid UUID format: " + uuidString);
-                }
+            String worldName = savedConfig.getString("world");
+            if (worldName != null) {
+                world = Bukkit.getWorld(worldName);
             }
         }
     }
@@ -101,15 +91,23 @@ public class gameLogic {
         }
 
         if (!(risingBlock.contains("LAVA") || risingBlock.contains("WATER") || risingBlock.contains("VOID"))) {
-            player.sendMessage(plugin.PLUGIN_NAME + "Invalid block in configuration. Select the following: ");
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid block in configuration.");
             return;
         }
+
+        if (startingHeight < -64) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid starting height in configuration.");
+            return;
+        }
+
+        activeGame = true;
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
         if (playersAlive.size() == 1) {
             playersNeeded = 1;
         }
         world = player.getWorld();
+        startingHeight = config.getInt("startingHeight");
 
         Runnable initializeGame = () -> {
             startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
@@ -139,8 +137,6 @@ public class gameLogic {
             } else {
                 gameLoop();
             }
-
-           activeGame = true;
         };
 
         new BukkitRunnable() {
@@ -155,7 +151,7 @@ public class gameLogic {
                     } else if (countdown == 1) {
                         text = ChatColor.GREEN + "➀";
                     }
-                    for (Player player : playersAlive) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendTitle(text, "", 1, 20, 1);
                     }
                     countdown -= 1;
@@ -168,22 +164,37 @@ public class gameLogic {
     };
 
     public void loadGame(Player player) {
+        activeGame = savedConfig.getBoolean("activeGame");
+
         if (!activeGame) {
             player.sendMessage(plugin.PLUGIN_NAME + "A game is not in session");
         }
 
-        Runnable initializeGame = () -> {
-            world = player.getWorld();
+        activeGame = true;
 
+        playerUUIDs = savedConfig.getStringList("playersAlive");
+
+        for (String uuidString : playerUUIDs) {
+            try {
+                UUID uuid = UUID.fromString(uuidString);
+                Player foundPlayer = Bukkit.getPlayer(uuid);
+
+                if (foundPlayer != null) {
+                    playersAlive.add(player);
+                }
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Invalid UUID format: " + uuidString);
+            }
+        }
+
+        Runnable initializeGame = () -> {
             startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
 
-            if (gracePeriod > 0) {
+            if (gracePeriod > 0 && graceProgress > 0) {
                 gracePeriod(graceProgress);
             } else {
                 gameLoop();
             }
-
-            activeGame = true;
         };
 
         new BukkitRunnable() {
@@ -198,7 +209,7 @@ public class gameLogic {
                     } else if (countdown == 1) {
                         text = ChatColor.GREEN + "➀";
                     }
-                    for (Player player : playersAlive) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendTitle(text, "", 1, 20, 1);
                     }
                     countdown -= 1;
@@ -216,7 +227,7 @@ public class gameLogic {
                 BarColor.GREEN,
                 BarStyle.SOLID);
 
-        for (Player player : playersAlive) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(plugin.PLUGIN_NAME + "Grace Period has started");
             bossBar.addPlayer(player);
             bossBar.setVisible(true);
@@ -264,7 +275,7 @@ public class gameLogic {
                 BarColor.RED,
                 BarStyle.SOLID);
 
-        for (Player player : playersAlive) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(plugin.PLUGIN_NAME + "The lava has started to rise");
             bossBar.addPlayer(player);
             bossBar.setVisible(true);
@@ -280,8 +291,9 @@ public class gameLogic {
 
             @Override
             public void run() {
-                if (!activeGame) {
+                if (!activeGame || (playersAlive.size() < playersNeeded)) {
                     bossBar.setVisible(false);
+//                    endGame(null);
                     this.cancel();
                 }
 
@@ -291,7 +303,7 @@ public class gameLogic {
                             for (int y = bottomRight.getBlockY(); y <= topLeft.getBlockY(); y++) {
                                 for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
                                     Block block = world.getBlockAt(x, y, z);
-                                    if (block.getType() == Material.DIRT) {
+                                    if (block.getType() == Material.AIR) {
                                         block.setType(Material.WATER);
                                     }
                                 }
@@ -305,6 +317,11 @@ public class gameLogic {
 
                         topLeft.setY(yLevel + heightIncrease);
                         bottomRight.setY(yLevel);
+
+                        if (world.getMaxHeight() <= yLevel) {
+                            yLevel = world.getMaxHeight();
+                            startingHeight = yLevel;
+                        }
                     }
 
                     try {
@@ -323,8 +340,9 @@ public class gameLogic {
                     currentProgress = currentProgress - (1.0 / heightDelay);
 
                     if (!clearActionBar) {
-                        for (Player player : playersAlive) {
-                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel));
+                        for (Player player : Bukkit.getOnlinePlayers()) {
+                            TextComponent actionBar = new TextComponent("Y-Level: " + ChatColor.BOLD + yLevel);
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, actionBar);
                         }
                     }
                 } else {
@@ -336,23 +354,26 @@ public class gameLogic {
 
     public void endGame(Player player) {
         if (!activeGame) {
-            player.sendMessage(plugin.PLUGIN_NAME + "A game is not in session");
+            plugin.getServer().broadcastMessage(plugin.PLUGIN_NAME + "A game is not in session");
+            return;
         }
 
-        for (Player alivePlayer : playersAlive) {
-            alivePlayer.setGameMode(GameMode.SURVIVAL);
-            player.sendMessage(plugin.PLUGIN_NAME + "Game has ended!");
-        }
-
-        TextComponent component = new TextComponent();
-        component.setText(plugin.PLUGIN_NAME + ChatColor.AQUA + "Click to play again!");
-        component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/floorislava start"));
-        player.spigot().sendMessage(component);
-
-        world.getWorldBorder().setCenter(new Location(world,0,0,0));
+        world.getWorldBorder().setCenter(new Location(world, 0, 0, 0));
         world.getWorldBorder().setSize(30000000);
 
         saveFile.deleteFile();
+
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            onlinePlayer.setGameMode(GameMode.SURVIVAL);
+            plugin.getServer().broadcastMessage(plugin.PLUGIN_NAME + "Game has ended!");
+        }
+
+        if (player != null) {
+            TextComponent playAgain = new TextComponent();
+            playAgain.setText(plugin.PLUGIN_NAME + ChatColor.AQUA + "Click to play again!");
+            playAgain.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/floorislava start"));
+            player.spigot().sendMessage(playAgain);
+        }
 
         activeGame = false;
     }
