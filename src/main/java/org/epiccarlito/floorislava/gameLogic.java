@@ -93,7 +93,7 @@ public class gameLogic {
             return;
         }
 
-        if (!(risingBlock.contains("LAVA") || risingBlock.contains("WATER") || risingBlock.contains("VOID"))) {
+        if (!(risingBlock.contains("LAVA") || risingBlock.contains("WATER"))) {
             player.sendMessage(plugin.PLUGIN_NAME + "Invalid block in configuration.");
             return;
         }
@@ -113,7 +113,7 @@ public class gameLogic {
         startingHeight = config.getInt("startingHeight");
 
         Runnable initializeGame = () -> {
-            startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
+            startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition) + 0.5, zPosition + 0.5);
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
             border.setSize(borderSize);

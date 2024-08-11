@@ -1,6 +1,6 @@
 risingBlock: "LAVA"
-forceTeleport: false
-forceClear: false
+forceTeleport: true
+forceClear: true
 clearActionBar: false
 startingHeight: -64
 heightIncrease: 3
