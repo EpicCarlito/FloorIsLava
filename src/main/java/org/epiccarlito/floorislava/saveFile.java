@@ -48,12 +48,12 @@ public class saveFile {
     }
 
     public void saveConfig(FileConfiguration newConfig) {
-        if (filePath == null || newConfig == null) return;
-        savedConfig = newConfig;
-
         if (game == null) {
             game = plugin.gameLogic;
         }
+
+        if (filePath == null || newConfig == null || !game.activeGame) return;
+        savedConfig = newConfig;
 
         ArrayList<String> playerUUIDs;
         if (game.playerUUIDs != null) {

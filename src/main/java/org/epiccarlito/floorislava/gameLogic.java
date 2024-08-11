@@ -83,6 +83,11 @@ public class gameLogic {
     }
 
     public void startGame(Player player) {
+        if (!player.hasPermission("floorislava")) {
+            player.sendMessage(plugin.PLUGIN_NAME + "You do not have access to this command!");
+            return;
+        }
+
         if (activeGame) {
             player.sendMessage(plugin.PLUGIN_NAME + "A game is currently in session");
             return;
@@ -125,7 +130,7 @@ public class gameLogic {
                 }
 
                 alivePlayer.setGameMode(GameMode.SURVIVAL);
-                alivePlayer.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
+                alivePlayer.setHealth(Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getBaseValue());
                 alivePlayer.setFoodLevel(20);
             }
 

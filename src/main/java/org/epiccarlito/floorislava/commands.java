@@ -24,6 +24,12 @@ public class commands implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] args) {
         if (!(commandSender instanceof Player)) return true;
+
+        if (!commandSender.hasPermission("floorislava")) {
+            commandSender.sendMessage(plugin.PLUGIN_NAME + "You do not have access to this command!");
+            return true;
+        }
+
         Player player = (Player) commandSender;
 
         switch (args.length) {

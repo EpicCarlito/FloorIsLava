@@ -6,6 +6,8 @@ import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Objects;
+
 public final class FloorIsLava extends JavaPlugin {
     public final saveFile saveFile = new saveFile(this);
     public gameLogic gameLogic;
@@ -19,7 +21,7 @@ public final class FloorIsLava extends JavaPlugin {
         world = Bukkit.getWorld("world");
         savedConfig = saveFile.findFile();
         gameLogic = new gameLogic(this);
-        getCommand("floorislava").setExecutor(new commands(this));
+        Objects.requireNonNull(getCommand("floorislava")).setExecutor(new commands(this));
         getServer().getPluginManager().registerEvents(new gameEvents(this), this);
         getLogger().info("Plugin Enabled");
     }
