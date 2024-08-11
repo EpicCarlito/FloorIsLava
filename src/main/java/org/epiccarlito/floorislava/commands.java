@@ -10,9 +10,9 @@ import java.util.Arrays;
 import java.util.List;
 
 public class commands implements CommandExecutor, TabCompleter {
+    private final String INSUFFICIENT_ARGS;
     public FloorIsLava plugin;
     public gameLogic game;
-    private final String INSUFFICIENT_ARGS;
 
     public commands(FloorIsLava plugin) {
         this.plugin = plugin;

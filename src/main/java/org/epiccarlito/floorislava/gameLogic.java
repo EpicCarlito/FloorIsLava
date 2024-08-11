@@ -15,19 +15,22 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class gameLogic {
     private final FloorIsLava plugin;
     private final saveFile saveFile;
     private final FileConfiguration config;
+    private final int xPosition;
+    private final int zPosition;
     public FileConfiguration savedConfig;
     public World world;
-
     public boolean activeGame = false;
     public String risingBlock;
     public boolean clearActionBar;
     public int startingHeight;
+    public int yLevel;
     public int heightIncrease;
     public int heightDelay;
     public int gracePeriod;
@@ -36,15 +39,10 @@ public class gameLogic {
     public Location startPosition;
     public ArrayList<Player> playersAlive = new ArrayList<>();
     public List<String> playerUUIDs;
-
-    private int playersNeeded = 2;
+    public BossBar bossBar;
+    public int playersNeeded = 2;
     private boolean forceTeleport;
     private boolean forceClear;
-
-    private final int xPosition;
-    private final int zPosition;
-
-    public BossBar bossBar;
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
@@ -132,7 +130,7 @@ public class gameLogic {
             }
 
             if (gracePeriod > 0) {
-                graceProgress = 1.0; 
+                graceProgress = 1.0;
                 gracePeriod(graceProgress);
             } else {
                 gameLoop();
@@ -161,7 +159,7 @@ public class gameLogic {
                 }
             }
         }.runTaskTimer(plugin, 0L, 20L);
-    };
+    }
 
     public void loadGame(Player player) {
         activeGame = savedConfig.getBoolean("activeGame");
@@ -219,7 +217,7 @@ public class gameLogic {
                 }
             }
         }.runTaskTimer(plugin, 0L, 20L);
-    };
+    }
 
     public void gracePeriod(double progress) {
         bossBar = Bukkit.createBossBar(
@@ -258,7 +256,7 @@ public class gameLogic {
                     }
 
                     bossBar.setProgress(currentProgress);
-                } catch(Exception e) {
+                } catch (Exception e) {
                     bossBar.setProgress(0.0);
                 }
 
@@ -270,6 +268,8 @@ public class gameLogic {
     }
 
     public void gameLoop() {
+        yLevel = startingHeight;
+
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Rising Lava",
                 BarColor.RED,
@@ -283,17 +283,15 @@ public class gameLogic {
         }
 
         new BukkitRunnable() {
-            private double currentProgress = 1.0;
-            private int yLevel = startingHeight;
-            private int secondsPassed = 0;
             final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel + heightIncrease, startPosition.getZ() - ((double) borderSize / 2));
             final Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
+            private double currentProgress = 1.0;
+            private int secondsPassed = 0;
 
             @Override
             public void run() {
-                if (!activeGame || (playersAlive.size() < playersNeeded)) {
+                if (!activeGame) {
                     bossBar.setVisible(false);
-//                    endGame(null);
                     this.cancel();
                 }
 
@@ -304,7 +302,7 @@ public class gameLogic {
                                 for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
                                     Block block = world.getBlockAt(x, y, z);
                                     if (block.getType() == Material.AIR) {
-                                        block.setType(Material.WATER);
+                                        block.setType(Objects.requireNonNull(Material.getMaterial(risingBlock)));
                                     }
                                 }
                             }
@@ -333,7 +331,7 @@ public class gameLogic {
                         }
 
                         bossBar.setProgress(currentProgress);
-                    } catch(Exception e) {
+                    } catch (Exception e) {
                         bossBar.setProgress(0.0);
                     }
 
@@ -348,8 +346,28 @@ public class gameLogic {
                 } else {
                     bossBar.setTitle("Height Limit Reached");
                 }
+
+                announceWinner(yLevel);
             }
         }.runTaskTimer(plugin, 0L, 20L);
+    }
+
+    public void announceWinner(int yLevel) {
+        if (!activeGame) return;
+
+        if (playersNeeded == 1 && yLevel == world.getMaxHeight()) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                String lastPlayer = playersAlive.get(0).getName();
+                player.sendTitle(ChatColor.GREEN + lastPlayer + " wins!", "", 10, 70, 20);
+                endGame(null);
+            }
+        } else if (playersNeeded == 2 && playersAlive.size() == 1) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                String lastPlayer = playersAlive.get(0).getName();
+                player.sendTitle(ChatColor.GREEN + lastPlayer + " wins!", "", 10, 70, 20);
+                endGame(null);
+            }
+        }
     }
 
     public void endGame(Player player) {
@@ -365,7 +383,7 @@ public class gameLogic {
 
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             onlinePlayer.setGameMode(GameMode.SURVIVAL);
-            plugin.getServer().broadcastMessage(plugin.PLUGIN_NAME + "Game has ended!");
+            plugin.getServer().broadcastMessage(plugin.PLUGIN_NAME + "This game has ended!");
         }
 
         if (player != null) {

@@ -10,8 +10,8 @@ import java.util.ArrayList;
 
 public class saveFile {
     private final FloorIsLava plugin;
-    private gameLogic game;
     private final File filePath;
+    private gameLogic game;
     private FileConfiguration savedConfig;
 
     public saveFile(FloorIsLava plugin) {
