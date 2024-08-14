@@ -3,10 +3,10 @@ forceTeleport: true
 forceClear: true
 clearActionBar: false
 startingHeight: -64
-heightIncrease: 3
-heightDelay: 3
-gracePeriod: 20
-borderSize: 100
+heightIncrease: 1
+heightDelay: 5
+gracePeriod: 600
+borderSize: 200
 startPosition:
   x: 0
   z: 0
