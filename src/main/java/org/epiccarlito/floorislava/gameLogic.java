@@ -13,6 +13,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -22,8 +23,8 @@ public class gameLogic {
     private final FloorIsLava plugin;
     private final saveFile saveFile;
     private final FileConfiguration config;
-    private final int xPosition;
-    private final int zPosition;
+    private int xPosition;
+    private int zPosition;
     public FileConfiguration savedConfig;
     public World world;
     public boolean activeGame = false;
@@ -50,37 +51,48 @@ public class gameLogic {
         savedConfig = plugin.savedConfig;
         config = plugin.getConfig();
 
-        if (savedConfig == null) {
-            risingBlock = config.getString("risingBlock");
-            forceTeleport = config.getBoolean("forceTeleport");
-            forceClear = config.getBoolean("forceClear");
-            clearActionBar = config.getBoolean("clearActionBar");
+        plugin.getLogger().info(String.valueOf(savedConfig != null));
 
-            heightIncrease = config.getInt("heightIncrease");
-            heightDelay = config.getInt("heightDelay");
-            gracePeriod = config.getInt("gracePeriod");
-            borderSize = config.getInt("borderSize");
-            xPosition = config.getInt("startPosition.x");
-            zPosition = config.getInt("startPosition.z");
-        } else {
-            risingBlock = savedConfig.getString("risingBlock");
-            clearActionBar = savedConfig.getBoolean("clearActionBar");
-            startingHeight = savedConfig.getInt("startingHeight");
-            heightIncrease = savedConfig.getInt("heightIncrease");
-            heightDelay = savedConfig.getInt("heightDelay");
+        try {
+            if (savedConfig != null) {
+                activeGame = savedConfig.getBoolean("activeGame");
+                risingBlock = savedConfig.getString("risingBlock");
+                clearActionBar = savedConfig.getBoolean("clearActionBar");
+                startingHeight = savedConfig.getInt("startingHeight");
+                heightIncrease = savedConfig.getInt("heightIncrease");
+                heightDelay = savedConfig.getInt("heightDelay");
+                gracePeriod = savedConfig.getInt("gracePeriod");
+                graceProgress = savedConfig.getDouble("graceProgress");
+                borderSize = savedConfig.getInt("borderSize");
+                xPosition = savedConfig.getInt("startPosition.x");
+                zPosition = savedConfig.getInt("startPosition.z");
 
-            gracePeriod = savedConfig.getInt("gracePeriod");
-            graceProgress = savedConfig.getDouble("graceProgress");
-            borderSize = savedConfig.getInt("borderSize");
-            xPosition = config.getInt("startPosition.x");
-            zPosition = config.getInt("startPosition.z");
-
-            String worldName = savedConfig.getString("world");
-            if (worldName != null) {
-                world = Bukkit.getWorld(worldName);
+                String worldName = savedConfig.getString("world");
+                if (worldName != null) {
+                    world = Bukkit.getWorld(worldName);
+                }
+            } else {
+                loadConfig();
             }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error loading configuration: " + e.getMessage());
+            loadConfig();
         }
     }
+
+    private void loadConfig() {
+        risingBlock = config.getString("risingBlock");
+        forceTeleport = config.getBoolean("forceTeleport");
+        forceClear = config.getBoolean("forceClear");
+        clearActionBar = config.getBoolean("clearActionBar");
+        heightIncrease = config.getInt("heightIncrease");
+        heightDelay = config.getInt("heightDelay");
+        gracePeriod = config.getInt("gracePeriod");
+        borderSize = config.getInt("borderSize");
+        xPosition = config.getInt("startPosition.x");
+        zPosition = config.getInt("startPosition.z");
+    }
+
 
     public void startGame(Player player) {
         if (!player.hasPermission("floorislava")) {
@@ -117,8 +129,6 @@ public class gameLogic {
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
             border.setSize(borderSize);
-
-            savedConfig = saveFile.createConfig();
 
             for (Player alivePlayer : playersAlive) {
                 if (forceTeleport) {
@@ -167,13 +177,10 @@ public class gameLogic {
     }
 
     public void loadGame(Player player) {
-        activeGame = savedConfig.getBoolean("activeGame");
-
-        if (!activeGame) {
-            player.sendMessage(plugin.PLUGIN_NAME + "A game is not in session");
+        if (!new File(plugin.getDataFolder(), "save.yml").exists()) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Save file not found");
+            return;
         }
-
-        activeGame = true;
 
         playerUUIDs = savedConfig.getStringList("playersAlive");
 
@@ -384,7 +391,9 @@ public class gameLogic {
         world.getWorldBorder().setCenter(new Location(world, 0, 0, 0));
         world.getWorldBorder().setSize(30000000);
 
-        saveFile.deleteFile();
+        if (savedConfig != null) {
+            saveFile.deleteFile();
+        }
 
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             onlinePlayer.setGameMode(GameMode.SURVIVAL);

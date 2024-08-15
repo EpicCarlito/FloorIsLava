@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class saveFile {
     private final FloorIsLava plugin;
@@ -21,12 +22,13 @@ public class saveFile {
     }
 
     public FileConfiguration findFile() {
-        if (filePath.exists()) {
+        if (filePath.exists() && filePath.length() > 0) {
             savedConfig = YamlConfiguration.loadConfiguration(filePath);
             plugin.getLogger().info("Found existing game data");
-            return savedConfig;
+        } else {
+            savedConfig = null;
         }
-        return null;
+        return savedConfig;
     }
 
     public YamlConfiguration createConfig() {
@@ -41,32 +43,33 @@ public class saveFile {
     }
 
     public void deleteFile() {
-        if (filePath.exists()) {
-            filePath.delete();
+        if (filePath.exists() && filePath.delete()) {
             plugin.getLogger().info("Deleted existing game data");
+        } else {
+            plugin.getLogger().info("Failed to delete save.yml");
         }
     }
 
-    public void saveConfig(FileConfiguration newConfig) {
+    public void saveConfig() {
         if (game == null) {
             game = plugin.gameLogic;
         }
 
-        if (filePath == null || newConfig == null || !game.activeGame) return;
-        savedConfig = newConfig;
+        if (!game.activeGame) return;
 
-        ArrayList<String> playerUUIDs;
+        List<String> playerUUIDs = new ArrayList<>();
         if (game.playerUUIDs != null) {
-            playerUUIDs = new ArrayList<>(game.playerUUIDs);
+            playerUUIDs.addAll(game.playerUUIDs);
         } else {
-            playerUUIDs = new ArrayList<>();
             for (Player player : game.playersAlive) {
                 playerUUIDs.add(player.getUniqueId().toString());
             }
         }
 
         try {
-            File saveFile = new File(plugin.getDataFolder(), "save.yml");
+            if (savedConfig == null) {
+                savedConfig = createConfig();
+            }
 
             savedConfig.set("activeGame", true);
             savedConfig.set("risingBlock", game.risingBlock);
@@ -77,16 +80,15 @@ public class saveFile {
             savedConfig.set("gracePeriod", game.gracePeriod);
             savedConfig.set("graceProgress", game.graceProgress);
             savedConfig.set("borderSize", game.borderSize);
-            savedConfig.set("startingHeight", game.startingHeight);
             savedConfig.set("world", game.world.getName());
             savedConfig.set("playersAlive", playerUUIDs);
             savedConfig.set("startPosition.x", game.startPosition.getX());
             savedConfig.set("startPosition.z", game.startPosition.getZ());
 
-            savedConfig.save(saveFile);
+            savedConfig.save(filePath);
             plugin.getLogger().info("Saved game data");
         } catch (IOException e) {
-            plugin.getLogger().info("Unable to save the game data");
+            plugin.getLogger().warning("Unable to save game data: " + e.getMessage());
         }
     }
 }

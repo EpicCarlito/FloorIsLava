@@ -6,9 +6,9 @@ authors: [ EpicCarlito ]
 commands:
   floorislava:
     description: "Play FloorIsLava"
-    usage: "/floorislava [help, start]"
+    usage: "/floorislava [help, start, load, end]"
     aliases: [fl]
 permissions:
-  floorislava:
+  floorislava.commands:
     description: Allows access to /floorislava
     default: op

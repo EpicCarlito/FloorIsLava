@@ -1,5 +1,6 @@
 package org.epiccarlito.floorislava;
 
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -25,7 +26,7 @@ public class commands implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] args) {
         if (!(commandSender instanceof Player)) return true;
 
-        if (!commandSender.hasPermission("floorislava")) {
+        if (!commandSender.hasPermission("floorislava.commands")) {
             commandSender.sendMessage(plugin.PLUGIN_NAME + "You do not have access to this command!");
             return true;
         }
@@ -48,11 +49,15 @@ public class commands implements CommandExecutor, TabCompleter {
                         break;
                     }
                     case "load": {
-                        game.loadGame(player);
+                        if (game.activeGame) {
+                            player.sendMessage(plugin.PLUGIN_NAME + "A game is currently in session");
+                        } else {
+                            game.loadGame(player);
+                        }
+
                         break;
                     }
                     case "end": {
-                        plugin.getLogger().info("Executing end command for player: " + player.getName());
                         game.endGame(player);
                         break;
                     }
@@ -77,6 +82,9 @@ public class commands implements CommandExecutor, TabCompleter {
     }
 
     public void help(Player player) {
-        player.sendMessage("Help Test Message");
+        player.sendMessage(plugin.PLUGIN_NAME + "Commands:");
+        player.sendMessage(ChatColor.BOLD + "/fl start" + ChatColor.RESET + " - Starts a new match");
+        player.sendMessage(ChatColor.BOLD + "/fl load" + ChatColor.RESET + " - Loads an existing match");
+        player.sendMessage(ChatColor.BOLD + "/fl end" + ChatColor.RESET + " - Ends the current match");
     }
 }
