@@ -13,11 +13,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class gameLogic {
     private final FloorIsLava plugin;
@@ -290,8 +286,6 @@ public class gameLogic {
         }
 
         new BukkitRunnable() {
-            final Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel + heightIncrease, startPosition.getZ() - ((double) borderSize / 2));
-            final Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
             private double currentProgress = 1.0;
             private int secondsPassed = 0;
 
@@ -302,18 +296,52 @@ public class gameLogic {
                     this.cancel();
                 }
 
+                borderSize = (int) world.getWorldBorder().getSize();
+
+                Location topLeft = new Location(world, startPosition.getX() - ((double) borderSize / 2), yLevel + heightIncrease, startPosition.getZ() - ((double) borderSize / 2));
+                Location bottomRight = new Location(world, startPosition.getX() + ((double) borderSize / 2), yLevel, startPosition.getZ() + ((double) borderSize / 2));
                 if (!(yLevel >= world.getMaxHeight())) {
                     if (currentProgress < 0) {
+
+                        int sectionSize = 750; // Number of blocks per tick
+                        List<Block> blocksToPlace = new ArrayList<>();
+
                         for (int x = topLeft.getBlockX(); x <= bottomRight.getBlockX(); x++) {
                             for (int y = bottomRight.getBlockY(); y <= topLeft.getBlockY(); y++) {
                                 for (int z = topLeft.getBlockZ(); z <= bottomRight.getBlockZ(); z++) {
                                     Block block = world.getBlockAt(x, y, z);
                                     if (block.getType() == Material.AIR) {
-                                        block.setType(Objects.requireNonNull(Material.getMaterial(risingBlock)));
+                                        blocksToPlace.add(block);
                                     }
                                 }
                             }
                         }
+
+                        int startX = topLeft.getBlockX();
+                        int startZ = topLeft.getBlockZ();
+
+                        blocksToPlace.sort(Comparator.comparingDouble(b ->
+                                b.getX() * b.getX() - 2 * startX * b.getX() + startX * startX +
+                                        b.getZ() * b.getZ() - 2 * startZ * b.getZ() + startZ * startZ
+                        ));
+
+                        new BukkitRunnable() {
+                            int index = 0;
+
+                            @Override
+                            public void run() {
+                                int end = Math.min(index + sectionSize, blocksToPlace.size());
+
+                                for (; index < end; index++) {
+                                    Block block = blocksToPlace.get(index);
+                                    block.setType(Material.getMaterial(risingBlock));
+                                }
+
+                                if (index >= blocksToPlace.size()) {
+                                    cancel(); // Done
+                                }
+                            }
+                        }.runTaskTimer(plugin, 0L, 2L);
 
                         bossBar.setProgress(1.0);
                         currentProgress = 1.0;
@@ -356,7 +384,7 @@ public class gameLogic {
 
                 announceWinner(yLevel);
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimerAsynchronously(plugin, 0L, 20L);
     }
 
     public void announceWinner(int yLevel) {
