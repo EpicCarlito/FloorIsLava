@@ -10,7 +10,7 @@ public final class FloorIsLava extends JavaPlugin {
     public final saveFile saveFile = new saveFile(this);
     public gameLogic gameLogic;
     public FileConfiguration savedConfig;
-    public String PLUGIN_NAME = ChatColor.RED + "[FloorIsLava] " + ChatColor.WHITE;
+    public String PLUGIN_NAME = ChatColor.GOLD + "[FloorIsLava] " + ChatColor.WHITE;
 
     @Override
     public void onEnable() {

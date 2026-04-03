@@ -7,6 +7,7 @@ heightIncrease: 1
 heightDelay: 5
 gracePeriod: 600
 borderSize: 200
+finalBorderSize: 50
 startPosition:
   x: 0
   z: 0

@@ -27,7 +27,7 @@ public class commands implements CommandExecutor, TabCompleter {
         if (!(commandSender instanceof Player)) return true;
 
         if (!commandSender.hasPermission("floorislava.commands")) {
-            commandSender.sendMessage(plugin.PLUGIN_NAME + "You do not have access to this command!");
+            commandSender.sendMessage(plugin.PLUGIN_NAME + "You don't have access to this command!");
             return true;
         }
 
@@ -53,7 +53,7 @@ public class commands implements CommandExecutor, TabCompleter {
                         break;
                     }
                     case "end": {
-                        game.endGame(player);
+                        game.endGame();
                         break;
                     }
                     default: {

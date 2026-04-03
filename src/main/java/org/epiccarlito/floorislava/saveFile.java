@@ -43,10 +43,12 @@ public class saveFile {
     }
 
     public void deleteFile() {
-        if (filePath.exists() && filePath.delete()) {
-            plugin.getLogger().info("Deleted save file");
-        } else {
-            plugin.getLogger().info("Failed to delete save.yml");
+        if (filePath.exists()) {
+            if (filePath.delete()) {
+                plugin.getLogger().info("Deleted save file");
+            } else {
+                plugin.getLogger().warning("Failed to delete save.yml");
+            }
         }
     }
 
@@ -58,12 +60,8 @@ public class saveFile {
         if (!game.activeGame) return;
 
         List<String> playerUUIDs = new ArrayList<>();
-        if (game.playerUUIDs != null) {
-            playerUUIDs.addAll(game.playerUUIDs);
-        } else {
-            for (Player player : game.playersAlive) {
-                playerUUIDs.add(player.getUniqueId().toString());
-            }
+        for (Player player : game.playersAlive) {
+            playerUUIDs.add(player.getUniqueId().toString());
         }
 
         try {
@@ -74,12 +72,13 @@ public class saveFile {
             savedConfig.set("activeGame", true);
             savedConfig.set("risingBlock", game.risingBlock);
             savedConfig.set("clearActionBar", game.clearActionBar);
-            savedConfig.set("startingHeight", game.startingHeight);
+            savedConfig.set("startingHeight", game.yLevel);
             savedConfig.set("heightIncrease", game.heightIncrease);
             savedConfig.set("heightDelay", game.heightDelay);
             savedConfig.set("gracePeriod", game.gracePeriod);
             savedConfig.set("graceProgress", game.graceProgress);
             savedConfig.set("borderSize", game.borderSize);
+            savedConfig.set("finalBorderSize", game.finalBorderSize);
             savedConfig.set("world", game.world.getName());
             savedConfig.set("playersAlive", playerUUIDs);
             savedConfig.set("playersNeeded", game.playersNeeded);
