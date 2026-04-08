@@ -17,6 +17,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class gameLogic {
     private final FloorIsLava plugin;
@@ -25,6 +26,7 @@ public class gameLogic {
     public FileConfiguration savedConfig;
     public boolean activeGame = false;
     public boolean ifSaveFile = false;
+    public boolean isFilling = false;
 
     public World world;
     public BossBar bossBar;
@@ -47,6 +49,12 @@ public class gameLogic {
     public boolean clearActionBar;
     private boolean forceTeleport;
     private boolean forceClear;
+
+    public long yIntervals;
+    private static final int SERVER_VERSION = Integer.parseInt(
+            Bukkit.getBukkitVersion().split("-")[0].split("\\.")[0]
+    );
+
 
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
@@ -84,7 +92,6 @@ public class gameLogic {
         }
     }
 
-
     public void startGame(Player player) {
         if (activeGame) {
             player.sendMessage(plugin.PLUGIN_NAME + "There is a match in session!");
@@ -101,7 +108,7 @@ public class gameLogic {
             return;
         }
 
-        if (startingHeight < -64) {
+        if (startingHeight < -64 || startingHeight > player.getWorld().getMaxHeight()) {
             player.sendMessage(plugin.PLUGIN_NAME + "Invalid starting height in configuration!");
             return;
         }
@@ -111,21 +118,39 @@ public class gameLogic {
             return;
         }
 
+        if (heightIncrease <= 0 || heightIncrease > 10) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid heightIncrease in configuration!");
+            return;
+        }
+
+        if (gracePeriod < 0) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid grace period in configuration!");
+            return;
+        }
+
+        if (borderSize < 0 || borderSize > 500) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid border size in configuration!");
+            return;
+        }
+
+        if (finalBorderSize < 0 || finalBorderSize > 500) {
+            player.sendMessage(plugin.PLUGIN_NAME + "Invalid final border size in configuration!");
+            return;
+        }
+
         activeGame = true;
+        world = player.getWorld();
+        startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition) + 1, zPosition + 0.5);
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
         if (playersAlive.size() == 1) {
             playersNeeded = 1;
         }
-        world = player.getWorld();
-        startingHeight = config.getInt("startingHeight");
 
         Runnable initializeGame = () -> {
-            startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition) + 0.5, zPosition + 0.5);
             WorldBorder border = world.getWorldBorder();
             border.setCenter(startPosition);
             border.setSize(borderSize);
-            world.setTime(1000);
 
             for (Player alivePlayer : playersAlive) {
                 if (forceTeleport) {
@@ -139,11 +164,23 @@ public class gameLogic {
                 alivePlayer.setGameMode(GameMode.SURVIVAL);
                 alivePlayer.setHealth(Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getBaseValue());
                 alivePlayer.setFoodLevel(20);
+                alivePlayer.sendMessage(Bukkit.getBukkitVersion());
+                alivePlayer.sendMessage(String.valueOf(SERVER_VERSION));
             }
 
+            yIntervals = (long) ((double)(world.getMaxHeight() - startingHeight) / heightIncrease);
+
             if (gracePeriod > 0) {
+                world.setTime(1000);
                 gracePeriod(0);
             } else {
+                world.setTime(1000);
+                if (SERVER_VERSION >= 26) {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                } else {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                }
+
                 gameLoop();
             }
         };
@@ -185,6 +222,7 @@ public class gameLogic {
         }
 
         activeGame = true;
+        startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
 
         for (String uuidString : playerUUIDs) {
             try {
@@ -199,12 +237,20 @@ public class gameLogic {
             }
         }
 
-        Runnable initializeGame = () -> {
-            startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
+        yIntervals = (long) ((double)(world.getMaxHeight() - startingHeight) / heightIncrease);
 
+        Runnable initializeGame = () -> {
             if (gracePeriod > 0 && graceProgress > 0) {
+                world.setTime(1000);
                 gracePeriod(gracePeriod * 20 - graceProgress);
             } else {
+                world.setTime(1000);
+                if (SERVER_VERSION >= 26) {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                } else {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                }
+
                 gameLoop();
             }
         };
@@ -223,7 +269,7 @@ public class gameLogic {
                     }
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendTitle(text, "", 1, 20, 1);
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.5f);
                     }
                     countdown -= 1;
                 } else {
@@ -246,7 +292,7 @@ public class gameLogic {
 
         for (Player player: Bukkit.getOnlinePlayers()) {
             player.sendTitle(ChatColor.GREEN + "GRACE PERIOD", "Respawns Enabled", 10, 70, 20);
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.5f);
             bossBar.addPlayer(player);
             bossBar.setProgress(Math.max(0.0, Math.min(1.0, progress)));
             bossBar.setVisible(true);
@@ -267,12 +313,13 @@ public class gameLogic {
 
                 if (ticksPassed > totalTicks) {
                     bossBar.setVisible(false);
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            gameLoop();
-                        }
-                    }.runTask(plugin);
+                    if (SERVER_VERSION >= 26) {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                    } else {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                    }
+
+                    gameLoop();
                     this.cancel();
                     return;
                 };
@@ -287,12 +334,11 @@ public class gameLogic {
 
     public void gameLoop() {
         yLevel = startingHeight;
+        isFilling = false;
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Rising Lava",
                 BarColor.RED,
                 BarStyle.SOLID);
-
-        long levels = (long) Math.ceil((double)(world.getMaxHeight() - startingHeight) / heightIncrease);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendTitle(ChatColor.GOLD + "RISING LAVA", ChatColor.RED + "Death is Permanent", 10, heightDelay * 20, 20);
@@ -302,8 +348,6 @@ public class gameLogic {
             bossBar.setProgress(1.0);
         }
 
-        world.getWorldBorder().setSize(finalBorderSize, levels * heightDelay);
-
         int totalTicks = heightDelay * 20;
 
         new BukkitRunnable() {
@@ -311,7 +355,7 @@ public class gameLogic {
 
             @Override
             public void run() {
-                boolean doFill = ticksPassed == totalTicks;
+                boolean doFill = ticksPassed >= totalTicks;
                 double progress = (yLevel >= world.getMaxHeight()) ? 0.0 : Math.max(0.0, Math.min(1.0, 1.0 - ((double) ticksPassed / totalTicks)));
 
                 if (doFill) {
@@ -339,7 +383,12 @@ public class gameLogic {
 
                         announceWinner();
 
-                        if (doFill) fillBlocks();
+                        if (yLevel >= world.getMaxHeight()) {
+                            bossBar.setTitle("Max Height");
+                            bossBar.setProgress(1.0);
+                        }
+
+                        if (doFill && !isFilling) fillBlocks();
                     }
                 }.runTask(plugin);
 
@@ -349,6 +398,7 @@ public class gameLogic {
     }
 
     public void fillBlocks() {
+        isFilling = true;
         int currBorder = (int) world.getWorldBorder().getSize();
         int halfBorder = currBorder / 2;
         int fillY = yLevel;
@@ -362,7 +412,9 @@ public class gameLogic {
 
             @Override
             public void run() {
-                int sectionSize = 750; // Number of blocks per tick
+                int totalBlocks = (endX - startX + 1) * (endZ - startZ + 1) * (heightIncrease + 1);
+                int ticksNeeded = heightDelay * 20;
+                int sectionSize = totalBlocks / ticksNeeded;
                 int blocksPlaced = 0;
 
                 while (x <= endX && blocksPlaced < sectionSize) {
@@ -382,10 +434,11 @@ public class gameLogic {
                     if (yLevel >= world.getMaxHeight()) {
                         yLevel = world.getMaxHeight();
                     }
+                    isFilling = false;
                     this.cancel();
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     public void announceWinner() {
@@ -446,11 +499,12 @@ public class gameLogic {
             return;
         }
 
-        world.getWorldBorder().setCenter(new Location(world, 0, 0, 0));
+        world.getWorldBorder().setCenter(0, 0);
         world.getWorldBorder().setSize(30000000);
 
         saveFile.deleteFile();
         ifSaveFile = false;
+        isFilling = false;
 
         Player lastPlayer = playersAlive.isEmpty() ? null : playersAlive.get(0);
 
@@ -467,6 +521,8 @@ public class gameLogic {
             lastPlayer.setGameMode(GameMode.SURVIVAL);
         }
 
+        bossBar.setVisible(false);
         activeGame = false;
     }
 }
+
