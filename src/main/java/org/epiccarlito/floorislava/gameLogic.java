@@ -55,7 +55,6 @@ public class gameLogic {
             Bukkit.getBukkitVersion().split("-")[0].split("\\.")[0]
     );
 
-
     public gameLogic(FloorIsLava plugin) {
         this.plugin = plugin;
         saveFile = plugin.saveFile;
@@ -164,8 +163,6 @@ public class gameLogic {
                 alivePlayer.setGameMode(GameMode.SURVIVAL);
                 alivePlayer.setHealth(Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getBaseValue());
                 alivePlayer.setFoodLevel(20);
-                alivePlayer.sendMessage(Bukkit.getBukkitVersion());
-                alivePlayer.sendMessage(String.valueOf(SERVER_VERSION));
             }
 
             yIntervals = (long) ((double)(world.getMaxHeight() - startingHeight) / heightIncrease);

@@ -1,11 +1,9 @@
 package org.epiccarlito.floorislava;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Firework;
+import org.bukkit.entity.LightningStrike;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -35,7 +33,11 @@ public class gameEvents implements Listener {
         }
 
         if (game.playersAlive.contains(player)) {
-            game.world.strikeLightningEffect(targetLocation);
+            LightningStrike lightning = player.getWorld().strikeLightningEffect(targetLocation);
+            lightning.setSilent(true);
+            for (Player alivePlayer : Bukkit.getOnlinePlayers()) {
+                alivePlayer.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
+            }
             plugin.getServer().broadcastMessage(plugin.PLUGIN_NAME + playerName + " has been eliminated!");
             player.setGameMode(GameMode.SPECTATOR);
             game.playersAlive.remove(player);
