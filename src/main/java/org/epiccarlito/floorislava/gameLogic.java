@@ -148,6 +148,7 @@ public class gameLogic {
 
         Runnable initializeGame = () -> {
             WorldBorder border = world.getWorldBorder();
+            world.setSpawnLocation(startPosition);
             border.setCenter(startPosition);
             border.setSize(borderSize);
 
@@ -169,11 +170,11 @@ public class gameLogic {
 
             if (gracePeriod > 0) {
                 world.setTime(1000);
-                gracePeriod(0);
+                gracePeriod();
             } else {
                 world.setTime(1000);
                 if (SERVER_VERSION >= 26) {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
                 } else {
                     world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
                 }
@@ -239,11 +240,11 @@ public class gameLogic {
         Runnable initializeGame = () -> {
             if (gracePeriod > 0 && graceProgress > 0) {
                 world.setTime(1000);
-                gracePeriod(gracePeriod * 20 - graceProgress);
+                gracePeriod();
             } else {
                 world.setTime(1000);
                 if (SERVER_VERSION >= 26) {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
                 } else {
                     world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
                 }
@@ -277,15 +278,14 @@ public class gameLogic {
         }.runTaskTimer(plugin, 0L, 20L);
     }
 
-    public void gracePeriod(int ticksElapsed) {
+    public void gracePeriod() {
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Grace Period",
                 BarColor.GREEN,
                 BarStyle.SOLID);
 
-        int totalTicks = gracePeriod * 20;
-
-        double progress = 1.0 - ((double) ticksElapsed / totalTicks);
+        double totalTicks = gracePeriod * 20 * 60;
+        double progress = (totalTicks - graceProgress) / totalTicks;
 
         for (Player player: Bukkit.getOnlinePlayers()) {
             player.sendTitle(ChatColor.GREEN + "GRACE PERIOD", "Respawns Enabled", 10, 70, 20);
@@ -296,7 +296,7 @@ public class gameLogic {
         }
 
         new BukkitRunnable() {
-            private int ticksPassed = ticksElapsed == 0 ? 1 : ticksElapsed;
+            private int ticksPassed = graceProgress == 0 ? 1 : graceProgress;
 
             @Override
             public void run() {
@@ -307,11 +307,12 @@ public class gameLogic {
                 }
 
                 ticksPassed++;
+                graceProgress++;
 
                 if (ticksPassed > totalTicks) {
                     bossBar.setVisible(false);
                     if (SERVER_VERSION >= 26) {
-                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 10);
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
                     } else {
                         world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
                     }
@@ -321,9 +322,7 @@ public class gameLogic {
                     return;
                 };
 
-                graceProgress = totalTicks - ticksPassed;
-
-                double progress = 1.0 - ((double) ticksPassed / totalTicks);
+                double progress = (totalTicks - ticksPassed) / totalTicks;
                 bossBar.setProgress(Math.max(0.0, Math.min(1.0, progress)));
             }
         }.runTaskTimerAsynchronously(plugin, 0L, 1L);
@@ -496,6 +495,9 @@ public class gameLogic {
             return;
         }
 
+        graceProgress = 0;
+
+        world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0), 0);
         world.getWorldBorder().setCenter(0, 0);
         world.getWorldBorder().setSize(30000000);
 
