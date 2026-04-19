@@ -122,7 +122,7 @@ public class gameLogic {
             return;
         }
 
-        if (gracePeriod < 0) {
+        if (gracePeriod < 0 || gracePeriod > 1800) {
             player.sendMessage(plugin.PLUGIN_NAME + "Invalid grace period in configuration!");
             return;
         }
@@ -132,7 +132,7 @@ public class gameLogic {
             return;
         }
 
-        if (finalBorderSize < 0 || finalBorderSize > 500) {
+        if (finalBorderSize > borderSize || finalBorderSize < 0) {
             player.sendMessage(plugin.PLUGIN_NAME + "Invalid final border size in configuration!");
             return;
         }
@@ -284,8 +284,12 @@ public class gameLogic {
                 BarColor.GREEN,
                 BarStyle.SOLID);
 
-        double totalTicks = gracePeriod * 20 * 60;
+        double totalTicks = gracePeriod * 20;
         double progress = (totalTicks - graceProgress) / totalTicks;
+        String minutes = (gracePeriod / 60) > 0 ? (gracePeriod / 60) + "m" : "";
+        String seconds = (gracePeriod % 60) > 0 ? (minutes.isEmpty() ? "" : " and ") + (gracePeriod % 60) + "s" : "";
+
+        Bukkit.broadcastMessage(plugin.PLUGIN_NAME + "Grace Period is " + minutes + seconds);
 
         for (Player player: Bukkit.getOnlinePlayers()) {
             player.sendTitle(ChatColor.GREEN + "GRACE PERIOD", "Respawns Enabled", 10, 70, 20);

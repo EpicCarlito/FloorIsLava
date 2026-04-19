@@ -28,7 +28,7 @@ public class gameEvents implements Listener {
         String playerName = player.getName();
         Location targetLocation = player.getLocation().add(0, 1, 0);
 
-        if (game.gracePeriod > 0 && game.graceProgress > 0) {
+        if ((game.graceProgress / 20) < game.gracePeriod) {
             return;
         }
 
