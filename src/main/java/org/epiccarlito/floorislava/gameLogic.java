@@ -74,7 +74,6 @@ public class gameLogic {
         forceTeleport = config.getBoolean("forceTeleport");
         forceClear = config.getBoolean("forceClear");
         clearActionBar = ifSaveFile ? savedConfig.getBoolean("clearActionBar") : config.getBoolean("clearActionBar");
-        startingHeight = ifSaveFile ? savedConfig.getInt("startingHeight") : config.getInt("startingHeight");
         heightIncrease = ifSaveFile ? savedConfig.getInt("heightIncrease") : config.getInt("heightIncrease");
         heightDelay = ifSaveFile ? savedConfig.getInt("heightDelay") : config.getInt("heightDelay");
         gracePeriod = ifSaveFile ? savedConfig.getInt("gracePeriod") : config.getInt("gracePeriod");
@@ -140,6 +139,8 @@ public class gameLogic {
         activeGame = true;
         world = player.getWorld();
         startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition) + 1, zPosition + 0.5);
+        startingHeight = config.getInt("startingHeight");
+        yLevel = startingHeight;
 
         playersAlive = new ArrayList<>(Bukkit.getOnlinePlayers());
         if (playersAlive.size() == 1) {
@@ -173,10 +174,12 @@ public class gameLogic {
                 gracePeriod();
             } else {
                 world.setTime(1000);
-                if (SERVER_VERSION >= 26) {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
-                } else {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                if (finalBorderSize < 0) {
+                    if (SERVER_VERSION >= 26) {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
+                    } else {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                    }
                 }
 
                 gameLoop();
@@ -221,6 +224,8 @@ public class gameLogic {
 
         activeGame = true;
         startPosition = new Location(world, xPosition + 0.5, world.getHighestBlockYAt(xPosition, zPosition), zPosition + 0.5);
+        startingHeight = savedConfig.getInt("startingHeight");
+        yLevel = startingHeight;
 
         for (String uuidString : playerUUIDs) {
             try {
@@ -243,10 +248,12 @@ public class gameLogic {
                 gracePeriod();
             } else {
                 world.setTime(1000);
-                if (SERVER_VERSION >= 26) {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
-                } else {
-                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                if (finalBorderSize < 0) {
+                    if (SERVER_VERSION >= 26) {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
+                    } else {
+                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                    }
                 }
 
                 gameLoop();
@@ -299,9 +306,19 @@ public class gameLogic {
             bossBar.setVisible(true);
         }
 
-        new BukkitRunnable() {
-            private int ticksPassed = graceProgress == 0 ? 1 : graceProgress;
+        Runnable startGame = () -> {
+            if (finalBorderSize < 0) {
+                if (SERVER_VERSION >= 26) {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
+                } else {
+                    world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
+                }
+            }
 
+            gameLoop();
+        };
+
+        new BukkitRunnable() {
             @Override
             public void run() {
                 if (!activeGame) {
@@ -310,30 +327,24 @@ public class gameLogic {
                     return;
                 }
 
-                ticksPassed++;
                 graceProgress++;
 
-                if (ticksPassed > totalTicks) {
+                if (graceProgress > totalTicks) {
                     bossBar.setVisible(false);
-                    if (SERVER_VERSION >= 26) {
-                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.MILLISECONDS, (yIntervals * heightDelay) * 20);
-                    } else {
-                        world.getWorldBorder().setSize(finalBorderSize, TimeUnit.SECONDS, (yIntervals * heightDelay));
-                    }
 
-                    gameLoop();
+                    startGame.run();
+
                     this.cancel();
                     return;
                 };
 
-                double progress = (totalTicks - ticksPassed) / totalTicks;
+                double progress = (totalTicks - graceProgress) / totalTicks;
                 bossBar.setProgress(Math.max(0.0, Math.min(1.0, progress)));
             }
-        }.runTaskTimerAsynchronously(plugin, 0L, 1L);
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     public void gameLoop() {
-        yLevel = startingHeight;
         isFilling = false;
         bossBar = Bukkit.createBossBar(
                 ChatColor.WHITE + "Rising Lava",
@@ -402,10 +413,10 @@ public class gameLogic {
         int currBorder = (int) world.getWorldBorder().getSize();
         int halfBorder = currBorder / 2;
         int fillY = yLevel;
-        int startX = (int)(startPosition.getX() - halfBorder);
-        int endX   = (int)(startPosition.getX() + halfBorder);
-        int startZ = (int)(startPosition.getZ() - halfBorder);
-        int endZ   = (int)(startPosition.getZ() + halfBorder);
+        int startX = (int) (startPosition.getX() - halfBorder);
+        int endX = (int) (startPosition.getX() + halfBorder);
+        int startZ = (int) (startPosition.getZ() - halfBorder);
+        int endZ = (int) (startPosition.getZ() + halfBorder);
 
         new BukkitRunnable() {
             int x = startX;
@@ -421,7 +432,7 @@ public class gameLogic {
                     for (int z = startZ; z <= endZ; z++) {
                         for (int y = fillY; y <= Math.min(fillY + heightIncrease, world.getMaxHeight()); y++) {
                             Block block = world.getBlockAt(x, y, z);
-                            if (block.getType() == Material.AIR) {
+                            if (block.getType().isAir()) { // why does the game have "cave" air
                                 block.setType(Material.getMaterial(risingBlock));
                                 blocksPlaced++;
                             }

@@ -1,6 +1,9 @@
 package org.epiccarlito.floorislava;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,7 +27,14 @@ public final class FloorIsLava extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        Bukkit.getScheduler().cancelTasks(this);
+
         saveFile.saveConfig();
+        World world = Bukkit.getWorld(Objects.requireNonNull(savedConfig.getString("world")));
+        assert world != null;
+        WorldBorder border = world.getWorldBorder();
+        border.setSize(savedConfig.getDouble("borderSize"));
+
         getLogger().info("Plugin Disabled");
     }
 }
